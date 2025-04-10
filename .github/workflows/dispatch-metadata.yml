@@ -32,23 +32,33 @@ jobs:
 
       - name: Send Dispatch Event
         run: |
+          json_payload=$(jq -n \
+            --arg sender "${{ github.repository }}" \
+            --arg version "${{ steps.semver.outputs.version }}" \
+            --argjson config '${{ steps.config.outputs.config }}' \
+            '{
+              event_type: "new-release",
+              client_payload: {
+                sender: $sender,
+                version: $version,
+                config: $config
+              }
+            }')
+      
+          echo "Dispatch payload:"
+          echo "$json_payload" | jq .
+      
           status=$(curl -o response.txt -w "%{http_code}" -s -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}" \
             https://api.github.com/repos/TRAINFACED/trainfaced/dispatches \
-            -d '{
-              "event_type": "new-release",
-              "client_payload": {
-                "sender": "${{ github.repository }}",
-                "version": "${{ steps.semver.outputs.version }}",
-                "config": ${{ steps.config.outputs.config }}
-              }
-            }')
+            -d "$json_payload")
+      
           if [ "$status" -ne 204 ]; then
             echo "❌ Dispatch failed with status code $status"
             cat response.txt
             exit 1
-          fi  
+          fi
 # on:
 #   workflow_call:
 #     inputs:
