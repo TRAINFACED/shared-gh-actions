@@ -7,12 +7,15 @@ on:
   push:
     tags:
       - 'v*'  # matches v1.2.3, v2.0.0, etc.
-      
+
 jobs:
   dispatch:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Parse Version
         id: semver
         run: |
