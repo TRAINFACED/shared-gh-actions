@@ -25,9 +25,13 @@ jobs:
       - name: Parse Version
         id: semver
         run: |
-          version="${{ github.event.release.tag_name }}"
-          version="${version#v}"
+          version="${GITHUB_REF#refs/tags/}"
+          version="${version#v}"  # optional: remove leading 'v'
           echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Show version
+        run: |
+          echo "Parsed version: ${{ steps.semver.outputs.version }}"
 
       - name: Load Config Metadata
         id: config
