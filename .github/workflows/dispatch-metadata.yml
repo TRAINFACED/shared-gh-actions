@@ -32,7 +32,7 @@ jobs:
 
       - name: Send Dispatch Event
         run: |
-          curl --fail -X POST \
+          status=$(curl -o response.txt -w "%{http_code}" -s -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}" \
             https://api.github.com/repos/TRAINFACED/trainfaced/dispatches \
@@ -43,7 +43,12 @@ jobs:
                 "version": "${{ steps.semver.outputs.version }}",
                 "config": ${{ steps.config.outputs.config }}
               }
-            }'
+            }')
+          if [ "$status" -ne 200 ]; then
+            echo "❌ Dispatch failed with status code $status"
+            cat response.txt
+            exit 1
+          fi  
 # on:
 #   workflow_call:
 #     inputs:
