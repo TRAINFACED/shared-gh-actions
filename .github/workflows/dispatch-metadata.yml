@@ -1,0 +1,51 @@
+name: Dispatch Metadata
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Parse Version
+        id: semver
+        run: |
+          version="${{ github.event.release.tag_name }}"
+          version="${version#v}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Load Config Metadata
+        id: config
+        run: |
+          # You could also `cat config.json` or read from a YAML and convert
+          config=`{"fields":[{"name":"otel-tracing-disabled","description":"Disable OpenTelemetry tracing","isOps":true,"boolField":{}},{"name":"otel-collector-endpoint-tls-cert-path","description":"Path to a file containing a PEM-encoded certificate to use as a CA for TLS connections to the OpenTelemetry collector","isOps":true,"stringField":{}},{"name":"otel-collector-endpoint-tls-cert","description":"A PEM-encoded certificate to use as a CA for TLS connections to the OpenTelemetry collector","isOps":true,"stringField":{}},{"name":"otel-collector-endpoint-tls-insecure","description":"Allow insecure connections to the OpenTelemetry collector","isOps":true,"boolField":{}},{"name":"token","description":"The GitHub access token used to connect to the GitHub API.","isRequired":true,"stringField":{"rules":{"isRequired":true}}},{"name":"otel-logging-disabled","description":"Disable OpenTelemetry logging","isOps":true,"boolField":{}},{"name":"instance-url","description":"The GitHub instance URL to connect to. (default \"https://github.com\")","stringField":{}},{"name":"log-level","description":"The log level: debug, info, warn, error","isOps":true,"stringField":{"defaultValue":"info"}},{"name":"otel-collector-endpoint","description":"The endpoint of the OpenTelemetry collector to send observability data to (used for both tracing and logging if specific endpoints are not provided)","isOps":true,"stringField":{}},{"name":"orgs","description":"Limit syncing to specific organizations.","stringSliceField":{}}]}`
+          echo "config=$config" >> $GITHUB_OUTPUT
+
+      - name: Send Dispatch Event
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}" \
+            https://api.github.com/repos/your-org/metadata-repo/dispatches \
+            -d '{
+              "event_type": "new-release",
+              "client_payload": {
+                "sender": "${{ github.repository }}",
+                "version": "${{ steps.semver.outputs.version }}",
+                "config": ${{ steps.config.outputs.config }}
+              }
+            }'
+# on:
+#   workflow_call:
+#     inputs:
+#       config_json:
+#         required: true
+#         type: string
+#       token_secret_name:
+#         required: false
+#         type: string
+#     secrets:
+#       METADATA_REPO_PAT:
+#         required: true
